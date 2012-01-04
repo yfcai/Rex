@@ -1,5 +1,10 @@
 # this is run before all other code
 
+class Float
+  # prevents scientific notation
+  def to_s(decimal_places=8); "%.#{decimal_places}f" % self end
+end
+
 module RexPrelude
 
 @@doc_declare = lambda do
@@ -80,10 +85,21 @@ end
 class Class; public :define_method end
 def define_method(name, &block); self.class.define_method(name, &block) end
 
+# parse key-value pairs
+def keyval(arg)
+  hash = {}
+  arg.split(',').each do |s|
+    k, v = s.split('=')
+    hash[k.strip] = v && v.strip
+  end
+  hash
+end
+
 def optional(content, left='[', right=']')
   RexPrelude.optional(content, left, right)
 end
 
+# "\\" + name + optional(opt) + "{#{arg}}"
 def macrone(name, arg, opt=nil)
   RexPrelude.macrone(name, arg, opt)
 end
@@ -93,21 +109,24 @@ def documentclass(arg, opt=nil)
   nil
 end
 
-def preamble(arg, opt=nil) # ignore opt for now
+def preamble(arg)
   RexPrelude.preamble << arg
   nil
 end
 
-def ref(arg, opt=nil) # ignore opt for now
-  lambda{RexPrelude.theorem_like_str[arg]} # creates suspension!
+def ref(arg)
+  lambda do
+    RexPrelude.theorem_like_str[arg] ||
+    "[UNRESOLVED REFERENCE #{arg}]"
+  end # creates suspension!
 end
 
 RexPrelude.package_like('usepackage')
 RexPrelude.package_like('usetikzlibrary')
 
 def tikzlibrary(arg, opt=nil)
-  usepackage 'tikz'
-  usetikzlibrary arg
+  usepackage('tikz')
+  usetikzlibrary(arg, opt)
 end
 
 RexPrelude.theorem_like('section') do |arg, opt, num|
@@ -115,7 +134,8 @@ RexPrelude.theorem_like('section') do |arg, opt, num|
     macrone('section', arg)
 end
 
-def env(arg, opt=nil); RexPrelude.env(arg, opt) end
+# "\\begin{#{opt}}#{optional options}\n#{arg}\\end{#{opt}}\n"
+def env(arg, opt=nil, options=nil); RexPrelude.env(arg, opt, options) end
 
 def newtheorem(name, print = nil, new = nil)
   print ||= name.capitalize
@@ -132,7 +152,7 @@ def newtheorem(name, print = nil, new = nil)
   end
 end
 
-def counter(arg, opt=nil)
+def counter(arg)
   RexPrelude.counter[arg]
 end
 
@@ -140,6 +160,52 @@ def setcounter(arg, opt)
   RexPrelude.counter[opt] = arg.to_i
   nil
 end
+
+# "tikzfig[label]{caption}
+# label is required because we automatically mkdir & touch stuff for you!
+def tikzfig(arg, opt)
+  label, scale, options = opt.split('#')
+  scale ||= 1
+  usepackage "pdfpages"
+  usepackage "float" if options.to_s.include? 'H'
+  path = "fig/#{label}/"
+  file = path + 't.rex'
+  rslt = path + 't.pdf'
+  unless File.exist?(file)
+    start_content = %{\
+\\def\\par{} % the whole figure is one giant paragraph
+% tikz figure #{label}
+"documentclass{standalone}
+"usepackage{tikz}
+\\begin{tikzpicture}
+
+\\end{tikzpicture}
+}
+    `mkdir -p #{path}`
+    unless $?.success?
+      $stderr.puts "!!!! Tikzfigure #{file} creation failed. !!!!"
+      exit 1
+    else
+      File.open(file, 'w'){|f| f.write(start_content)}
+    end
+  end
+  unless File.exist?(rslt) && File::mtime(rslt) > File::mtime(file)
+    output = `cd #{path} 2>&1 && pdflatex t.rex 2>&1`
+    unless $?.success?
+      $stderr.puts output
+      $stderr.puts "!!!! Figure #{file} failed to compile. !!!!"
+      exit 1
+    end
+    output = nil
+  end
+  tikzfig_counter(nil, label)
+  RexPrelude.env %{
+    \\centering
+    #{RexPrelude.macrone('includegraphics', rslt, "scale=#{scale}")}
+    #{RexPrelude.macrone('caption', arg)}
+  }, "figure", options
+end
+RexPrelude.theorem_like('tikzfig_counter') do nil end
 
 
 
@@ -154,3 +220,5 @@ preamble "\\swapnumbers\\theoremstyle{definition}\n"
 newtheorem('theorem', nil, true)
 
 %w[definition lemma corollary].each {|name| newtheorem(name)}
+
+# large environments such as proof must come after complete recursivity

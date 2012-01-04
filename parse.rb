@@ -75,7 +75,8 @@ def self.executed; @@execute end
 def self.execute(tag, opt, arg)
   @@execute <<
     if tag
-      "#{tag}(#{arg.inspect},#{opt.inspect})"
+      opt ? "#{tag}(#{arg.inspect},#{opt.inspect})" :
+        "#{tag}(#{arg.inspect})"
     else arg end
   t = @@execute.length - 1
   lambda{@@execute[t]}

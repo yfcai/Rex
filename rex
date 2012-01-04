@@ -11,10 +11,11 @@ module RexExec
   PDFLATE = 'remotex -interaction=nonstopmode "\input"'
   TINPUTS = '.:' + ENV['HOME'] + '/sc/AAA:'
 
-  FILENAMES = ARGV.select {|x| x =~ /\.#{EXTREX}$/i}
+  TRAIN   = /\.#{EXTREX}$/i
+  FILENAMES = ARGV.select {|x| x =~ TRAIN}
 
   INFILE  = FILENAMES.first
-  TEXFILE = INFILE.sub(/\.#{EXTREX}$/i, ".#{EXTTEX}")
+  TEXFILE = FILENAMES.first.sub(TRAIN, ".#{EXTTEX}")
   TEXHAND = File.open(TEXFILE,'w')
 
   def self.evaluate(p)
