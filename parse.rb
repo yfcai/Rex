@@ -1,5 +1,9 @@
 # it is much better to freeze s before proceeding.
 
+# ISSUE
+# For some reason, last char of a file does not appear in generated tex.
+# It forces me to put \n at end of file for the moment.
+
 module RexParse
 
 def self.wedge_char_plus(s, j, hash, preserve = nil)
@@ -46,7 +50,11 @@ def self.parse_tex(s, i)
 end
 
 def self.parse_rex(s, i)
-  parse_tag(s, i+1)
+  if i >= 1 && s[i - 1] == 92 # '\\'[0] == 92
+    parse_tex(s, i + 1) << '"'
+  else
+    parse_tag(s, i+1)
+  end
 end
 
 def self.parse_tag(s, i)

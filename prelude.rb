@@ -14,7 +14,7 @@ module RexPrelude
 end
 
 @@preamble = [@@doc_declare]
-@@preinject = ["\\begin{document}\n"]
+@@preinject = ["\n\\begin{document}\n"]
 @@postamble = ["\n\\end{document}\n"]
 
 @@documentclass = ['article', nil]
@@ -32,6 +32,15 @@ def self.package_like name
   end
 end
 
+def self.theorem_rm(
+name,
+preceding = nil,
+counter   = nil,
+referrer  = lambda{|a| a.join('.')},
+&definer
+)
+  theorem_like(name, preceding, counter, false, referrer, &definer)
+end
 # the third param block receives the strings and format them
 def self.theorem_like(
 name,
@@ -53,6 +62,7 @@ referrer    = lambda{|a| a.join('.')},
     arg = RexPrelude.italic_math(arg) if italic_math
     definer.call(arg, opt, *my_id.reverse)
   end
+  nil
 end
 @@theorem_like_cnt = {};
 @@theorem_like_str = {}; def self.theorem_like_str; @@theorem_like_str end
@@ -130,8 +140,13 @@ def self.italic_math(arg)
           #
           hyphen_following = (argv[i+1] =~ /^\s*-/) &&
             !(argv[i - 1] =~ /\s$/)
-          argv[i - 1] =~ /([[:alpha:]])(\s*)$/ && !hyphen_following ?
-          "\\itAdjustAfterMath #{$1}$#{$2}#{new_mode}" : "$#{$2}#{new_mode}"
+          if argv[i - 1] =~ /([[:alpha:]])(\s*)$/ && !hyphen_following
+            "\\itAdjustAfterMath #{$1}$#{$2}#{new_mode}"
+          else
+            # ends in symbol, but has space. needs those.
+            argv[i - 1] =~ /\S(\s+)$/ || argv[i - 1] =~ /^(\s+)$/
+            "$#{$1}#{new_mode}"
+          end
         else
           # exiting math into roman; implicit italic correction is correct.
           argv[i - 1] =~ /(\s*)$/
@@ -144,6 +159,12 @@ def self.italic_math(arg)
         when *ITALIC_MATH_ITALICS
           # entering math mode from italics
           # makes stupid assumption; see ISSUE above.
+          ## forces italic correction before math
+          ## apparently needs no correction here
+          ## trailing = /([^\s{}\[\]])(\s)*$/
+          ## if argv[i - 1] =~ trailing
+          ##  argv[i - 1] = argv[i - 1].sub(trailing, $1+'\/'+$2.to_s)
+          ## end
           argv[i + 1] =~ /^\s*([[:alpha:]])/ ?
           "$\\itAdjustBeforeMath #{$1}" : '$'
         else
@@ -227,6 +248,11 @@ def preamble(arg)
   nil
 end
 
+# TODO: REDEFINE TITLE & AUTHOR
+# SO THAT TITLE IS PLACED AT THE PLACE OF INVOCATION
+#def title arg; macrone 'title', arg end
+#def author arg; macrone 'author', arg end
+
 def ref(arg)
   lambda do
     RexPrelude.theorem_like_str[arg] ||
@@ -242,7 +268,8 @@ def tikzlibrary(arg, opt=nil)
   usetikzlibrary(arg, opt)
 end
 
-RexPrelude.theorem_like('section') do |arg, opt, num|
+RexPrelude.theorem_rm('section') do |arg, opt, num|
+  setcounter(0, 'theorem') # reset theorem counter.
   "\\setcounter{section}{#{num - 1}}" +
     macrone('section', arg)
 end
@@ -267,6 +294,7 @@ def newtheorem(name, print = nil, new = nil)
     arg, opt = args
     RexPrelude.env(arg, name + '?', opt)
   end
+  nil
 end
 
 def italic_math(arg)
@@ -319,18 +347,18 @@ def tikzfig(arg, opt)
     end
     output = nil
   end
-  tikzfig_counter(nil, label)
+  tikzfig_counter(nil, label) if arg.length > 0
   RexPrelude.env %{
     \\centering
     #{RexPrelude.macrone('includegraphics', rslt, "scale=#{scale}")}
-    #{RexPrelude.macrone('caption', arg)}
+    #{arg.length > 0 ? RexPrelude.macrone('caption', arg) : nil}
   }, "figure", options
 end
 # tikzfig_counter assumes that the document has only tikz figures.
 # might as well rename tikzfig to figure.
 # the 'false' parameter indicates that it should not be typeset
 # with italic_math module.
-RexPrelude.theorem_like('tikzfig_counter',nil,nil,false) do nil end
+RexPrelude.theorem_rm('tikzfig_counter') do end
 
 
 ################ CUSTOM SETTINGS ################
@@ -344,6 +372,8 @@ preamble "\\swapnumbers\n"
 preamble RexPrelude::ITALIC_MATH_ADJUSTMENTS
 newtheorem('theorem', nil, true)
 
-%w[definition lemma corollary].each {|name| newtheorem(name)}
+%w[definition lemma corollary remark].each do |name|
+  newtheorem(name)
+end
 
 # large environments such as proof must come after complete recursivity
