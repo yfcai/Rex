@@ -32,21 +32,11 @@ def self.package_like name
   end
 end
 
-def self.theorem_rm(
-name,
-preceding = nil,
-counter   = nil,
-referrer  = lambda{|a| a.join('.')},
-&definer
-)
-  theorem_like(name, preceding, counter, false, referrer, &definer)
-end
 # the third param block receives the strings and format them
 def self.theorem_like(
 name,
 preceding   = nil,
 counter     = nil,
-italic_math = true,
 referrer    = lambda{|a| a.join('.')},
 &definer
 )
@@ -59,7 +49,6 @@ referrer    = lambda{|a| a.join('.')},
     RexPrelude.theorem_like_cur[counter] += 1
     my_id = RexPrelude.theorem_like_trace(name)
     RexPrelude.theorem_like_str[opt] = referrer.call(my_id)
-    arg = RexPrelude.italic_math(arg) if italic_math
     definer.call(arg, opt, *my_id.reverse)
   end
   nil
@@ -92,123 +81,6 @@ end
 def self.env(arg, opt, options=nil)
   "\\begin{#{opt}}#{optional options}\n#{arg}\\end{#{opt}}\n"
 end
-
-# Typeset interspersed italic text & math.
-# Assumes the containing environment is italic.
-#
-=begin Examples
-
-"italic_math{If \m U \it or \m V \it and \m X\it, and}
-
-"italic_math{
-  Quarantined \m H\sc-free edge deletion \it is
-  incompressible if \m H\it is \m3\it-connected
-  and incomplete.
-}
-
-=end
-def self.italic_math(arg)
-  argv = arg.split(ITALIC_MATH_REGEX)
-  last_nonmath =
-    prev = ITALIC_MATH_ITALICS.first # require IT..CS. to be '\it'
-  1.step(argv.length - 1, 2) do |i|
-    belo = argv[i]
-    if belo == '$' # replace dollar sign with stuff
-      case prev
-      when ITALIC_MATH_BEGIN # exiting math mode
-        belo = last_nonmath
-        # must deal with space-eating macros
-        argv[i - 1] += $1 if argv[i + 1] =~ /^(\s+)/
-      else # entering math mode
-        belo = ITALIC_MATH_BEGIN
-      end
-    end
-    if prev == ITALIC_MATH_BEGIN
-      # exiting math mode
-      new_mode = belo # spacing issues if saved
-      argv[i] =
-        case belo
-        when ITALIC_MATH_BEGIN
-          $stderr.puts('Invalid use of RexPrelude::italic_math: '+
-                       'entering math mode from math mode.');throw(arg)
-        when *ITALIC_MATH_ITALICS
-          # exiting math into italics; discarding implicit italic correction.
-          #
-          # ISSUE: too complicated to parse entire math list.
-          #   we assume, stupidly, that any trailing nonalphabetic character
-          #   is a symbol and needs no adjustment.
-          #
-          hyphen_following = (argv[i+1] =~ /^\s*-/) &&
-            !(argv[i - 1] =~ /\s$/)
-          if argv[i - 1] =~ /([[:alpha:]])(\s*)$/ && !hyphen_following
-            "\\itAdjustAfterMath #{$1}$#{$2}#{new_mode}"
-          else
-            # ends in symbol, but has space. needs those.
-            argv[i - 1] =~ /\S(\s+)$/ || argv[i - 1] =~ /^(\s+)$/
-            "$#{$1}#{new_mode}"
-          end
-        else
-          # exiting math into roman; implicit italic correction is correct.
-          argv[i - 1] =~ /(\s*)$/
-          "$#{$1}#{new_mode}"
-        end
-    elsif belo == ITALIC_MATH_BEGIN
-      # entering math mode
-      argv[i] =
-        case prev
-        when *ITALIC_MATH_ITALICS
-          # entering math mode from italics
-          # makes stupid assumption; see ISSUE above.
-          ## forces italic correction before math
-          ## apparently needs no correction here
-          ## trailing = /([^\s{}\[\]])(\s)*$/
-          ## if argv[i - 1] =~ trailing
-          ##  argv[i - 1] = argv[i - 1].sub(trailing, $1+'\/'+$2.to_s)
-          ## end
-          argv[i + 1] =~ /^\s*([[:alpha:]])/ ?
-          "$\\itAdjustBeforeMath #{$1}" : '$'
-        else
-          # entering math from roman
-          '$'
-        end
-    elsif ITALIC_MATH_ITALICS.include?(prev) &&
-        ITALIC_MATH_ROMANS.include?(belo)
-      # entering roman from italics; should get corrected.
-      lettre, spaces = argv[i - 1].split(/(\s*)$/)
-      if lettre.to_s.length > 0
-        argv[i - 1] = "#{lettre}\\/#{spaces}"
-      else # lettre.length == 0: give it up. too late to worry now.
-      end
-    end
-    prev = belo
-    last_nonmath = belo if belo != ITALIC_MATH_BEGIN
-  end
-  argv.join
-end
-ITALIC_MATH_ITALICS = # the first one must be an incarnation of \it.
-%w[\\it \\sl]
-ITALIC_MATH_ROMANS =
-%w[\\bf \\sc \\sf \\rm \\tt]
-ITALIC_MATH_BEGIN =
-"\\m"
-ITALIC_MATH_REGEX = Regexp.new(
-'(\$)|(?:('+
-[ITALIC_MATH_ITALICS,ITALIC_MATH_ROMANS,ITALIC_MATH_BEGIN].flatten.map{|s|
-"\\"+s}.join('|')+')(?![[:alpha:]]))')
-ITALIC_MATH_ADJUSTMENTS =
-%q[\newlength\itMathAdjustmentOne
-\newlength\itMathAdjustmentTwo
-\def\itAdjustBeforeMath#1{%
-\settowidth\itMathAdjustmentOne{#1\/}%
-\settowidth\itMathAdjustmentTwo{$#1$}%
-\addtolength\itMathAdjustmentOne{-\itMathAdjustmentTwo}%
-\hspace{\itMathAdjustmentOne}}
-\def\itAdjustAfterMath#1{%
-\settowidth\itMathAdjustmentOne{#1\/}%
-\settowidth\itMathAdjustmentTwo{#1}%
-\addtolength\itMathAdjustmentOne{-\itMathAdjustmentTwo}%
-\hspace{-\itMathAdjustmentOne}}
-]
 
 end # RexPrelude
 
@@ -268,7 +140,7 @@ def tikzlibrary(arg, opt=nil)
   usetikzlibrary(arg, opt)
 end
 
-RexPrelude.theorem_rm('section') do |arg, opt, num|
+RexPrelude.theorem_like('section') do |arg, opt, num|
   setcounter(0, 'theorem') # reset theorem counter.
   "\\setcounter{section}{#{num - 1}}" +
     macrone('section', arg)
@@ -277,15 +149,12 @@ end
 # "\\begin{#{opt}}#{optional options}\n#{arg}\\end{#{opt}}\n"
 def env(arg, opt=nil, options=nil); RexPrelude.env(arg, opt, options) end
 
-# ISSUE: no support for roman theorem text.
-# Roman text requires two things:
-# 1. Call theorem_like with italic_math set to false.
-# 2. Ensure \theoremstyle{definition} before \newtheorem.
 def newtheorem(name, print = nil, new = nil)
   print ||= name.capitalize
   preamble(new ? "\\newtheorem{#{name}}{#{print}}[section]\n" :
            "\\newtheorem{#{name}}[theorem]{#{print}}\n")
-  RexPrelude.theorem_like(name, 'section', 'theorem') do |arg, opt, num, sec|
+  RexPrelude.theorem_like(name, 'section', 'theorem') do
+    |arg, opt, num, sec|
     "\\setcounter{theorem}{#{num - 1}}\\setcounter{section}{#{sec}}" +
       RexPrelude.env(arg, name, nil) # must preprocess arg to get opt
   end
@@ -295,10 +164,6 @@ def newtheorem(name, print = nil, new = nil)
     RexPrelude.env(arg, name + '?', opt)
   end
   nil
-end
-
-def italic_math(arg)
-  RexPrelude.italic_math(arg)
 end
 
 def counter(arg)
@@ -358,7 +223,7 @@ end
 # might as well rename tikzfig to figure.
 # the 'false' parameter indicates that it should not be typeset
 # with italic_math module.
-RexPrelude.theorem_rm('tikzfig_counter') do end
+RexPrelude.theorem_like('tikzfig_counter') do end
 
 
 ################ CUSTOM SETTINGS ################
@@ -368,8 +233,7 @@ usepackage 'amssymb'
 usepackage 'amsthm'
 
 # newtheorem depends on these preambles
-preamble "\\swapnumbers\n"
-preamble RexPrelude::ITALIC_MATH_ADJUSTMENTS
+preamble "\\swapnumbers\n\\theoremstyle{definition}\n"
 newtheorem('theorem', nil, true)
 
 %w[definition lemma corollary remark].each do |name|
