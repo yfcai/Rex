@@ -149,10 +149,17 @@ end
 # "\\begin{#{opt}}#{optional options}\n#{arg}\\end{#{opt}}\n"
 def env(arg, opt=nil, options=nil); RexPrelude.env(arg, opt, options) end
 
-def newtheorem(name, print = nil, new = nil)
-  print ||= name.capitalize
+def newtheorem(name, opt = {})
+  o = {
+    :swap  => true,
+    :print => name.capitalize,
+  }.merge(opt)
+  new   = o[:new]
+  print = o[:print]
+  preamble "\\swapnumbers\n\\theoremstyle{definition}\n"
   preamble(new ? "\\newtheorem{#{name}}{#{print}}[section]\n" :
            "\\newtheorem{#{name}}[theorem]{#{print}}\n")
+  preamble "\\swapnumbers\n"
   RexPrelude.theorem_like(name, 'section', 'theorem') do
     |arg, opt, num, sec|
     "\\setcounter{theorem}{#{num - 1}}\\setcounter{section}{#{sec}}" +
@@ -225,6 +232,31 @@ end
 # with italic_math module.
 RexPrelude.theorem_like('tikzfig_counter') do end
 
+# problem
+preamble '
+\newdimen\pproblsep \pproblsep=5pt
+\newdimen\pprobskip \pprobskip=30pt
+\newdimen\pprobhead \pprobhead=60pt
+\newdimen\pprobwidth \pprobwidth=\dimexpr\hsize-2\pprobskip-\pprobhead
+'
+def problem(arg)
+  skip = '\smallbreak'
+  cr = "\\cr\n"
+  lines = arg.split("#").map{|s|s.strip}
+  skip + '{\def\\\\{\hfil\break}
+\halign{\hskip\pprobskip\hbox
+to\pprobhead{\it#\hfil}&
+\vtop spread\pproblsep{\hsize=\pprobwidth\parindent0pt
+#
+\par\vfil}\cr
+' +
+    'Problem&	' + lines[0] + cr +
+    'Instance&	' + lines[1] + cr +
+    (lines[3] && 'Parameter&	' + lines[2] + cr).to_s +
+#    "\\noalign{\\pproblsep=0pt}\n" +
+    'Question&	' + lines.last + "\\cr\n}}" + skip + "\n"
+end
+
 
 ################ CUSTOM SETTINGS ################
 
@@ -233,8 +265,7 @@ usepackage 'amssymb'
 usepackage 'amsthm'
 
 # newtheorem depends on these preambles
-preamble "\\swapnumbers\n\\theoremstyle{definition}\n"
-newtheorem('theorem', nil, true)
+newtheorem('theorem', :new => true)
 
 %w[definition lemma corollary remark].each do |name|
   newtheorem(name)
