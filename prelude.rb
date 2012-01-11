@@ -151,21 +151,39 @@ def env(arg, opt=nil, options=nil); RexPrelude.env(arg, opt, options) end
 
 def newtheorem(name, opt = {})
   o = {
-    :swap  => true,
-    :print => name.capitalize,
+    :new    => true,
+    :swap   => true,
+    :parent => nil,
+    :print  => name.capitalize,
   }.merge(opt)
-  new   = o[:new]
-  print = o[:print]
-  preamble "\\swapnumbers\n\\theoremstyle{definition}\n"
-  preamble(new ? "\\newtheorem{#{name}}{#{print}}[section]\n" :
-           "\\newtheorem{#{name}}[theorem]{#{print}}\n")
-  preamble "\\swapnumbers\n"
-  RexPrelude.theorem_like(name, 'section', 'theorem') do
+  new    = o[:new]
+  swap   = o[:swap]
+  parent = o[:parent]
+  print  = o[:print]
+  declaration  = swap ? "\\swapnumbers\n" : ''
+  declaration += "\\theoremstyle{definition}\n"
+  preamble declaration
+  if new # some nasty semantics here
+    counter = nil
+    precurs = parent
+  else
+    counter = parent
+    precurs = nil
+  end
+  preamble "\\newtheorem{#{name}}#{RexPrelude.optional counter}{#{
+    print}}#{RexPrelude.optional precurs}\n"
+  preamble "\\newtheorem*{#{name}?}{#{print}}\n"
+  preamble "\\swapnumbers\n" if swap
+  # this is a nasty hack that won't work if pushed
+  counter ||= name
+  precurs = 'section' unless new
+  RexPrelude.theorem_like(name, precurs, counter) do
     |arg, opt, num, sec|
-    "\\setcounter{theorem}{#{num - 1}}\\setcounter{section}{#{sec}}" +
+    #"\\setcounter{theorem}{#{num - 1}}\\setcounter{section}{#{sec}}" +
+    "\\setcounter{#{counter}}{#{num - 1}}" +
+      (precurs && "\\setcounter{#{precurs}}{#{sec}}").to_s +
       RexPrelude.env(arg, name, nil) # must preprocess arg to get opt
   end
-  preamble "\\newtheorem*{#{name}?}{#{print}}\n"
   define_method(name + '?') do |*args|
     arg, opt = args
     RexPrelude.env(arg, name + '?', opt)
@@ -264,11 +282,13 @@ usepackage 'amsmath'
 usepackage 'amssymb'
 usepackage 'amsthm'
 
-# newtheorem depends on these preambles
-newtheorem('theorem', :new => true)
+preamble "\\input defs\n"
 
-%w[definition lemma corollary remark].each do |name|
-  newtheorem(name)
+# newtheorem depends on these preambles
+newtheorem('theorem', :parent => 'section')
+
+%w[definition lemma corollary remark observation].each do |name|
+  newtheorem(name, :new => false, :parent => 'theorem')
 end
 
 # large environments such as proof must come after complete recursivity
