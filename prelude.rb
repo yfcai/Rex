@@ -153,17 +153,30 @@ def env(arg, opt=nil, options=nil); RexPrelude.env(arg, opt, options) end
 def restate(label)
   @newtheorem_statements[label]
 end
-def newtheorem(name, opt = {})
+def brandnewtheorem(name, opt = {})
   o = {
     :new    => true,
-    :swap   => true,
+    :swap   => false,
     :parent => nil,
     :print  => name.capitalize,
   }.merge(opt)
+  bonenewtheorem(name, o)
+end
+def newtheorem(name, opt = {})
+  o = {
+    :new    => false,
+    :swap   => true,
+    :parent => 'theorem',
+    :print  => name.capitalize,
+  }.merge(opt)
+  bonenewtheorem(name, o)
+end
+def bonenewtheorem(name, o = {})
   new    = o[:new]
   swap   = o[:swap]
   parent = o[:parent]
   print  = o[:print]
+  label  = o[:label]
   declaration  = swap ? "\\swapnumbers\n" : ''
   declaration += "\\theoremstyle{definition}\n"
   preamble declaration
@@ -183,6 +196,7 @@ def newtheorem(name, opt = {})
   precurs = 'section' unless new
   RexPrelude.theorem_like(name, precurs, counter) do
     |arg, opt, num, sec|
+    opt ||= label
     #"\\setcounter{theorem}{#{num - 1}}\\setcounter{section}{#{sec}}" +
     @newtheorem_statements[opt] = "\\setcounter{#{counter}}{#{num - 1}}" +
       (precurs && "\\setcounter{#{precurs}}{#{sec}}").to_s +
@@ -289,10 +303,10 @@ usepackage 'amsthm'
 preamble "\\input defs\n"
 
 # newtheorem depends on these preambles
-newtheorem('theorem', :parent => 'section')
+brandnewtheorem('theorem', :parent => 'section', :swap => true)
 
 %w[definition lemma corollary remark observation].each do |name|
-  newtheorem(name, :new => false, :parent => 'theorem')
+  newtheorem(name)
 end
 
 # large environments such as proof must come after complete recursivity

@@ -56,6 +56,6 @@ RexExec::TEXHAND.write(RexExec.evaluate(s))}
 RexExec::TEXHAND.close
 
 exec %{\
-export       TEXINPUTS=#{RexExec::TINPUTS} && \
+export TEXINPUTS=#{RexExec::TINPUTS} && \
 #{RexExec::PDFLATE} #{RexExec::TEXFILE}
 }
