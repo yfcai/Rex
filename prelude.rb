@@ -149,6 +149,10 @@ end
 # "\\begin{#{opt}}#{optional options}\n#{arg}\\end{#{opt}}\n"
 def env(arg, opt=nil, options=nil); RexPrelude.env(arg, opt, options) end
 
+@newtheorem_statements = {}
+def restate(label)
+  @newtheorem_statements[label]
+end
 def newtheorem(name, opt = {})
   o = {
     :new    => true,
@@ -180,7 +184,7 @@ def newtheorem(name, opt = {})
   RexPrelude.theorem_like(name, precurs, counter) do
     |arg, opt, num, sec|
     #"\\setcounter{theorem}{#{num - 1}}\\setcounter{section}{#{sec}}" +
-    "\\setcounter{#{counter}}{#{num - 1}}" +
+    @newtheorem_statements[opt] = "\\setcounter{#{counter}}{#{num - 1}}" +
       (precurs && "\\setcounter{#{precurs}}{#{sec}}").to_s +
       RexPrelude.env(arg, name, nil) # must preprocess arg to get opt
   end
