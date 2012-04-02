@@ -17,7 +17,7 @@ end
 @@preinject = ["\n\\begin{document}\n"]
 @@postamble = ["\n\\end{document}\n"]
 
-@@documentclass = ['article', nil]
+@@documentclass = ['article', 'a4paper']
 
 def self.package_like name
   ins = "@@#{name}"
@@ -29,6 +29,7 @@ def self.package_like name
   end)
   Object.define_method(name) do |*args|
     dat[args[0]] = args[1]
+    nil
   end
 end
 
@@ -230,8 +231,8 @@ def tikzfig(arg, opt)
   rslt = path + 't.pdf'
   unless File.exist?(file)
     start_content = %{\
-\\def\\par{} % the whole figure is one giant paragraph
 % tikz figure #{label}
+\\def\\par{}
 "documentclass{standalone}
 "usepackage{tikz}
 \\begin{tikzpicture}
@@ -273,18 +274,22 @@ preamble '
 \newdimen\pproblsep \pproblsep=5pt
 \newdimen\pprobskip \pprobskip=30pt
 \newdimen\pprobhead \pprobhead=60pt
+
+% This is exclusively to fix amsbook with 11pt font
+\ifdim\hsize=0pt \hsize=360pt\relax \fi
+\newdimen\pprobitemwidth
+\pprobitemwidth=\dimexpr\hsize-2\pprobskip-\pprobhead-1.5cm\relax
+
 \newdimen\pprobwidth \pprobwidth=\dimexpr\hsize-2\pprobskip-\pprobhead
 '
 def problem(arg)
-  skip = '\smallbreak'
+  skip = '\vskip\pproblsep'
   cr = "\\cr\n"
   lines = arg.split("#").map{|s|s.strip}
-  skip + '{\def\\\\{\hfil\break}
-\halign{\hskip\pprobskip\hbox
-to\pprobhead{\it#\hfil}&
-\vtop spread\pproblsep{\hsize=\pprobwidth\parindent0pt
-#
-\par\vfil}\cr
+  skip + '
+{\def\\\\{\hfil\break}
+\halign{\hskip\pprobskip\hbox to\pprobhead{\it#\hfil}&\vtop
+spread\pproblsep{\hsize=\pprobwidth\parindent0pt#\par\vfil}\cr
 ' +
     'Problem&	' + lines[0] + cr +
     'Instance&	' + lines[1] + cr +

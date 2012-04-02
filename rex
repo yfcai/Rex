@@ -37,7 +37,17 @@ end
   load("#{RexExec::LIBPATH}/#{file}.rb")
 end
 
-RexExec.body = RexParse.parse(File.open(RexExec::INFILE).read.freeze)
+source = File.open(RexExec::INFILE).read.freeze
+
+first_line = source.split("\n",2).first
+case first_line
+when /latex/i
+  exec %{export TEXINPUTS=#{RexExec::TINPUTS} && \
+  #{RexExec::PDFLATE} #{RexExec::INFILE}
+}
+end
+
+RexExec.body = RexParse.parse(source)
 
 environment = lambda{}.binding
 (RexParse.executed.length - 1).downto(0) do |i|
