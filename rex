@@ -45,7 +45,7 @@ when /latex/i
   exec %{export TEXINPUTS=#{RexExec::TINPUTS} && \
   #{RexExec::PDFLATE} #{RexExec::INFILE}
 }
-end
+end if first_line[0] == 37 # '%'
 
 RexExec.body = RexParse.parse(source)
 
