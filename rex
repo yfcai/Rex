@@ -25,6 +25,11 @@ module RexExec
   def self.body; @@body end
   def self.body=(b); @@body = b end
 
+
+  def self.[](command, input)
+    exec %{export TEXINPUTS=#{TINPUTS} && \
+    #{command} #{input}}
+  end
 end
 
 if RexExec::FILENAMES.length != 1
@@ -42,9 +47,9 @@ source = File.open(RexExec::INFILE).read.freeze
 first_line = source.split("\n",2).first
 case first_line
 when /latex/i
-  exec %{export TEXINPUTS=#{RexExec::TINPUTS} && \
-  #{RexExec::PDFLATE} #{RexExec::INFILE}
-}
+  RexExec[RexExec::PDFLATE,RexExec::INFILE]
+when /plain/i
+  RexExec['pdftex', RexExec::INFILE]
 end if first_line[0] == 37 # '%'
 
 RexExec.body = RexParse.parse(source)
