@@ -88,6 +88,9 @@ end # RexPrelude
 ################ RexPrelude ENDS ################
 ################ INTERFACE BELOW ################
 
+# no operation
+def nop(*argv) end
+
 # make define_method public lol!
 class Class; public :define_method end
 def define_method(name, &block); self.class.define_method(name, &block) end
