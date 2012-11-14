@@ -8,8 +8,10 @@ module RexExec
 
   LIBPATH = ENV['HOME'] + '/sc/LMb.rex'
 
-  PDFLATE = 'remotex -interaction=nonstopmode "\input"'
-  TINPUTS = '.:' + ENV['HOME'] + '/sc/AAA:'
+  PDFLATE = '/usr/texbin/pdflatex -interaction=nonstopmode "\input"'
+  TINPUTS = '.:' +
+    ENV['HOME'] + '/sc/AAA:' +
+    ENV['HOME'] + '/sc/MLN.layout/texinputs:'
 
   TRAIN   = /\.#{EXTREX}$/i
   FILENAMES = ARGV.select {|x| x =~ TRAIN}
