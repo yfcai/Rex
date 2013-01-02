@@ -308,7 +308,8 @@ usepackage 'amsmath'
 usepackage 'amssymb'
 usepackage 'amsthm'
 
-preamble "\\input defs\n"
+# I don't think I need platform dependency anymore.
+# preamble "\\input defs\n"
 
 # newtheorem depends on these preambles
 brandnewtheorem('theorem', :parent => 'section', :swap => true)
