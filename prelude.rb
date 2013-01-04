@@ -137,6 +137,7 @@ def ref(arg)
 end
 
 RexPrelude.package_like('usepackage')
+RexPrelude.package_like('input')
 RexPrelude.package_like('usetikzlibrary')
 
 def tikzlibrary(arg, opt=nil)
