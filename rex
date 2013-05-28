@@ -3,8 +3,8 @@
 
 module RexExec
 
-  EXTREX = 'rex'
-  EXTTEX = 'tex'
+  EXTREX = 'tex'
+  EXTTEX = 'generated'
 
   LIBPATH = ENV['HOME'] + '/sc/LMb.rex'
 
