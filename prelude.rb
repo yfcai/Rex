@@ -124,6 +124,11 @@ def preamble(arg)
   nil
 end
 
+def preamble!(arg)
+  RexPrelude.preamble << arg.lines.map{|s|s.sub(/^%/,'')}.join("\n")
+  nil
+end
+
 # TODO: REDEFINE TITLE & AUTHOR
 # SO THAT TITLE IS PLACED AT THE PLACE OF INVOCATION
 #def title arg; macrone 'title', arg end
