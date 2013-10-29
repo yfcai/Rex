@@ -1,4 +1,4 @@
-#!/usr/bin/ruby
+#!/usr/bin/ruby # version 2.0 on osx 10.9
 # this is actually Rex.
 
 module RexExec
@@ -52,7 +52,7 @@ when /latex/i
   RexExec[RexExec::PDFLATE,RexExec::INFILE]
 when /plain/i
   RexExec['pdftex', RexExec::INFILE]
-end if first_line[0] == 37 # '%'
+end if first_line[0] == '%'
 
 RexExec.body = RexParse.parse(source)
 
